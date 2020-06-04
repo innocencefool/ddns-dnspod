@@ -45,8 +45,8 @@ def get_expect_addr():
         client.connect(('2400:3200::1', 53))
         ip_addr = client.getsockname()[0]
         client.close()
-    except:
-        pass
+    except Exception as e:
+        print('get_expect_addr : %s' % e)
     return ip_addr
 
 
@@ -55,8 +55,8 @@ def get_record_addr():
     try:
         client = socket.getaddrinfo('%s.%s' % (SUBDOMAIN, DOMAIN), 3389)
         ip_addr = client[0][4][0]
-    except:
-        pass
+    except Exception as e:
+        print('get_record_addr : %s' % e)
     return ip_addr
 
 
@@ -70,8 +70,8 @@ def get_record():
         request.set_accept_format('json')
         response = acsClient.do_action_with_exception(request)
         get_record_id = json.loads(response)['DomainRecords']['Record'][0]['RecordId']
-    except:
-        pass
+    except Exception as e:
+        print('get_record : %s' % e)
     return get_record_id
 
 
@@ -86,8 +86,8 @@ def add_record(ip_addr):
         request.set_accept_format('json')
         response = acsClient.do_action_with_exception(request)
         add_record_id = json.loads(response)['RecordId']
-    except:
-        pass
+    except Exception as e:
+        print('add_record : %s' % e)
     return add_record_id
 
 
@@ -102,8 +102,10 @@ def update_record(update_id, ip_addr):
         request.set_accept_format('json')
         response = acsClient.do_action_with_exception(request)
         update_record_id = json.loads(response)['RecordId']
-    except:
-        pass
+    except Exception as e:
+        print('update_record : %s' % e)
+        if 'DomainRecordDuplicate' in str(e):
+            return update_id
     return update_record_id
 
 

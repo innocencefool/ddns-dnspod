@@ -1,15 +1,16 @@
 #!/bin/sh
 
-##############################################################################################################
+#######################################################################################################
 # Xiaomi Mi Router 3G
 # MediaTek MT7621 ver:1 eco:3
 # OpenWrt 18.06.4 r7808-ef686b7292 / LuCI openwrt-18.06 branch (git-19.241.48373-38f5f4b)
 # 4.14.131
 # opkg install curl jq
-# chmod +x /etc/config/ddns-dnspod.sh
+# chmod +x /bin/ddns-dnspod.sh
+# echo "/bin/ddns-dnspod.sh" >> /etc/sysupgrade.conf
 # System -> Scheduled Tasks
-# */5 * * * * /etc/config/ddns-dnspod.sh www dnspod.cn 13490,6b5976c68aba5b14a0558b77c17c3932 pppoe-wan br-lan
-##############################################################################################################
+# */5 * * * * /bin/ddns-dnspod.sh www dnspod.cn 13490,6b5976c68aba5b14a0558b77c17c3932 pppoe-wan br-lan
+#######################################################################################################
 
 dnspod_config=/tmp/ddns-dnspod.conf
 

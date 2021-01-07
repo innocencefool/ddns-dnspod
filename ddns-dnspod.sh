@@ -1,17 +1,19 @@
 #!/bin/bash
 
-#########################################################################################################################
-# Linux raspberry-pi 4.15.0-1043-raspi2 #46-Ubuntu SMP PREEMPT Thu Aug 8 05:47:47 UTC 2019 armv7l armv7l armv7l GNU/Linux
+####################################################################################################################
+# Linux raspi 5.4.0-1026-raspi #29-Ubuntu SMP PREEMPT Mon Dec 14 17:01:16 UTC 2020 aarch64 aarch64 aarch64 GNU/Linux
 # apt install curl jq
-# chmod +x /usr/local/bin/ddns-dnspod-pi.sh
-# echo "*/5 * * * * root /usr/local/bin/ddns-dnspod-pi.sh" > /etc/cron.d/ddns-dnspod-pi
-#########################################################################################################################
+# chmod +x /home/ddns-dnspod.sh
+# echo "*/5 * * * * root /home/ddns-dnspod.sh" > /etc/cron.d/ddns-dnspod
+####################################################################################################################
 
-dnspod_config=/tmp/ddns-dnspod-pi.conf
-
-sub_domain=pi
-domain=dnspod.cn
 login_token=13490,6b5976c68aba5b14a0558b77c17c3932
+domain=dnspod.cn
+sub_domain=pi
+
+ddns_conf=/tmp/ddns-dnspod.conf
+ddns_log=/tmp/ddns-dnspod.log
+
 interface_name=eth0
 
 # get ipv4 address
@@ -28,8 +30,8 @@ if [ -n "$expect_addr_v4" ]; then
     if [[ -z "$record_addr_v4" || "$record_addr_v4" != "$expect_addr_v4" ]]; then
         need_ddns_v4=0
     fi
-    echo "expect_addr_v4 : $expect_addr_v4"
-    echo "record_addr_v4 : $record_addr_v4"
+    echo "expect_addr_v4 : $expect_addr_v4" >> $ddns_log
+    echo "record_addr_v4 : $record_addr_v4" >> $ddns_log
 fi
 
 if [ -n "$expect_addr_v6" ]; then
@@ -38,15 +40,15 @@ if [ -n "$expect_addr_v6" ]; then
     if [[ -z "$record_addr_v6" || "$record_addr_v6" != "$expect_addr_v6" ]]; then
         need_ddns_v6=0
     fi
-    echo "expect_addr_v6 : $expect_addr_v6"
-    echo "record_addr_v6 : $record_addr_v6"
+    echo "expect_addr_v6 : $expect_addr_v6" >> $ddns_log
+    echo "record_addr_v6 : $record_addr_v6" >> $ddns_log
 fi
 
 if [[ -n "$need_ddns_v4" || -n "$need_ddns_v6" ]]; then
-    if [ -f "$dnspod_config" ]; then
-        source $dnspod_config
+    if [ -f "$ddns_conf" ]; then
+        source $ddns_conf
     fi
-    echo "domain_id=$domain_id, record_id_v4=$record_id_v4, record_id_v6=$record_id_v6"
+    echo "domain_id=$domain_id, record_id_v4=$record_id_v4, record_id_v6=$record_id_v6" >> $ddns_log
 fi
 
 if [ -n "$need_ddns_v4" ]; then
@@ -55,11 +57,11 @@ if [ -n "$need_ddns_v4" ]; then
         domain_info=$(curl -s https://dnsapi.cn/Domain.Info -d "format=json&login_token=$login_token&domain=$domain")
         domain_id=$(echo "$domain_info" | jq -r ".domain.id // empty")
         if [ -n "$domain_id" ]; then
-            echo "get domain_id success : domain_id=$domain_id"
-            echo "domain_id=$domain_id" > $dnspod_config
+            echo "get domain_id success : domain_id=$domain_id" >> $ddns_log
+            echo "domain_id=$domain_id" > $ddns_conf
         else
             status_message=$(echo "$domain_info" | jq -r ".status.message // empty")
-            echo "get domain_id failed : $status_message"
+            echo "get domain_id failed : $status_message" >> $ddns_log
         fi
     fi
 
@@ -69,38 +71,38 @@ if [ -n "$need_ddns_v4" ]; then
             record_list=$(curl -s https://dnsapi.cn/Record.List -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_type=A")
             record_id_v4=$(echo "$record_list" | jq -r ".records[0].id // empty")
             if [ -n "$record_id_v4" ]; then
-                echo "get record_id_v4 success, record_id_v4=$record_id_v4"
+                echo "get record_id_v4 success, record_id_v4=$record_id_v4" >> $ddns_log
             else
                 status_message=$(echo "$record_list" | jq -r ".status.message // empty")
-                echo "get record_id_v4 failed : $status_message"
+                echo "get record_id_v4 failed : $status_message" >> $ddns_log
                 # create record_id_v4
                 record_create=$(curl -s https://dnsapi.cn/Record.Create -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_type=A&value=1.1.1.1&record_line_id=0")
                 record_id_v4=$(echo "$record_create" | jq -r ".record.id // empty")
                 if [ -n "$record_id_v4" ]; then
-                    echo "create record_id_v4 success, record_id_v4=$record_id_v4"
+                    echo "create record_id_v4 success, record_id_v4=$record_id_v4" >> $ddns_log
                 else
                     status_message=$(echo "$record_create" | jq -r ".status.message // empty")
-                    echo "create record_id_v4 failed : $status_message"
+                    echo "create record_id_v4 failed : $status_message" >> $ddns_log
                 fi
             fi
             if [ -n "$record_id_v4" ]; then
                 # ddns record_id_v4
                 record_ddns=$(curl -s https://dnsapi.cn/Record.Ddns -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_id=$record_id_v4&record_line_id=0")
                 status_message=$(echo "$record_ddns" | jq -r ".status.message // empty")
-                echo "ddns record_id_v4 result : $status_message"
+                echo "ddns record_id_v4 result : $status_message" >> $ddns_log
                 status_code=$(echo "$record_ddns" | jq -r ".status.code // empty")
                 if [ "$status_code" = "1" ]; then
-                    echo "record_id_v4=$record_id_v4" >> $dnspod_config
+                    echo "record_id_v4=$record_id_v4" >> $ddns_conf
                 fi
             fi
         else
             # modify record_id_v4
             record_modify=$(curl -s https://dnsapi.cn/Record.Modify -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_id=$record_id_v4&record_type=A&value=$expect_addr_v4&record_line_id=0")
             status_message=$(echo "$record_modify" | jq -r ".status.message // empty")
-            echo "modify record_id_v4 result : $status_message"
+            echo "modify record_id_v4 result : $status_message" >> $ddns_log
             status_code=$(echo "$record_modify" | jq -r ".status.code // empty")
             if [ "$status_code" != "1" ]; then
-                echo "" > $dnspod_config
+                echo "" > $ddns_conf
             fi
         fi
     fi
@@ -112,11 +114,11 @@ if [ -n "$need_ddns_v6" ]; then
         domain_info=$(curl -s https://dnsapi.cn/Domain.Info -d "format=json&login_token=$login_token&domain=$domain")
         domain_id=$(echo "$domain_info" | jq -r ".domain.id // empty")
         if [ -n "$domain_id" ]; then
-            echo "get domain_id success : domain_id=$domain_id"
-            echo "domain_id=$domain_id" > $dnspod_config
+            echo "get domain_id success : domain_id=$domain_id" >> $ddns_log
+            echo "domain_id=$domain_id" > $ddns_conf
         else
             status_message=$(echo "$domain_info" | jq -r ".status.message // empty")
-            echo "get domain_id failed : $status_message"
+            echo "get domain_id failed : $status_message" >> $ddns_log
         fi
     fi
 
@@ -126,34 +128,34 @@ if [ -n "$need_ddns_v6" ]; then
             record_list=$(curl -s https://dnsapi.cn/Record.List -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_type=AAAA")
             record_id_v6=$(echo "$record_list" | jq -r ".records[0].id // empty")
             if [ -n "$record_id_v6" ]; then
-                echo "get record_id_v6 success, record_id_v6=$record_id_v6"
+                echo "get record_id_v6 success, record_id_v6=$record_id_v6" >> $ddns_log
             else
                 status_message=$(echo "$record_list" | jq -r ".status.message // empty")
-                echo "get record_id_v6 failed : $status_message"
+                echo "get record_id_v6 failed : $status_message" >> $ddns_log
                 # create record_id_v6
                 record_create=$(curl -s https://dnsapi.cn/Record.Create -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_type=AAAA&value=1::1&record_line_id=0")
                 record_id_v6=$(echo "$record_create" | jq -r ".record.id // empty")
                 if [ -n "$record_id_v6" ]; then
-                    echo "create record_id_v6 success, record_id_v6=$record_id_v6"
+                    echo "create record_id_v6 success, record_id_v6=$record_id_v6" >> $ddns_log
                 else
                     status_message=$(echo "$record_create" | jq -r ".status.message // empty")
-                    echo "create record_id_v6 failed : $status_message"
+                    echo "create record_id_v6 failed : $status_message" >> $ddns_log
                 fi
             fi
             if [ -n "$record_id_v6" ]; then
                 # ddns record_id_v6
                 record_ddns=$(curl -s https://dnsapi.cn/Record.Ddns -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$record_id_v6&record_id=$record_id_v6&record_line_id=0")
                 status_message=$(echo "$record_ddns" | jq -r ".status.message // empty")
-                echo "ddns record_id_v6 result : $status_message"
+                echo "ddns record_id_v6 result : $status_message" >> $ddns_log
                 status_code=$(echo "$record_ddns" | jq -r ".status.code // empty")
                 if [ "$status_code" = "1" ]; then
                     # modify record_id_v6
                     record_modify=$(curl -s https://dnsapi.cn/Record.Modify -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_id=$record_id_v6&record_type=AAAA&value=$expect_addr_v6&record_line_id=0")
                     status_message=$(echo "$record_modify" | jq -r ".status.message // empty")
-                    echo "modify record_id_v6 result : $status_message"
+                    echo "modify record_id_v6 result : $status_message" >> $ddns_log
                     status_code=$(echo "$record_modify" | jq -r ".status.code // empty")
                     if [ "$status_code" = "1" ]; then
-                        echo "record_id_v6=$record_id_v6" >> $dnspod_config
+                        echo "record_id_v6=$record_id_v6" >> $ddns_conf
                     fi
                 fi
             fi
@@ -161,10 +163,10 @@ if [ -n "$need_ddns_v6" ]; then
             # modify record_id_v6
             record_modify=$(curl -s https://dnsapi.cn/Record.Modify -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_id=$record_id_v6&record_type=AAAA&value=$expect_addr_v6&record_line_id=0")
             status_message=$(echo "$record_modify" | jq -r ".status.message // empty")
-            echo "modify record_id_v6 result : $status_message"
+            echo "modify record_id_v6 result : $status_message" >> $ddns_log
             status_code=$(echo "$record_modify" | jq -r ".status.code // empty")
             if [ "$status_code" != "1" ]; then
-                echo "" > $dnspod_config
+                echo "" > $ddns_conf
             fi
         fi
     fi

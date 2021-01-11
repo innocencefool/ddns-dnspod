@@ -20,8 +20,8 @@ RECORD = 'www'
 
 SUBDOMAIN = '%s.%s' % (RECORD, DOMAIN)
 
-DDNS_CONF = 'ddns-dnspod.conf'
-DDNS_LOG = 'ddns-dnspod.log'
+DDNS_CONF = os.path.split(os.path.realpath(__file__))[0] + os.sep + 'ddns-dnspod.conf'
+DDNS_LOG = os.path.split(os.path.realpath(__file__))[0] + os.sep + 'ddns-dnspod.log'
 
 
 def resolve():

@@ -1,11 +1,13 @@
 #!/bin/bash
 
-####################################################################################################################
-# Linux raspi 5.4.0-1026-raspi #29-Ubuntu SMP PREEMPT Mon Dec 14 17:01:16 UTC 2020 aarch64 aarch64 aarch64 GNU/Linux
-# apt install curl jq
-# chmod +x /home/ddns-dnspod.sh
-# echo "*/5 * * * * root /home/ddns-dnspod.sh" > /etc/cron.d/ddns-dnspod
-####################################################################################################################
+############################################################################
+# Linux ER-X 4.14.54-UBNT #1 SMP Fri Jan 22 10:21:07 UTC 2021 mips GNU/Linux
+# sudo chmod +x /config/ddns-dnspod.sh
+# configure
+# set system task-scheduler task ddns crontab-spec '*/5 * * * *'
+# set system task-scheduler task ddns executable path /config/ddns-dnspod.sh
+# commit ; save
+############################################################################
 
 login_token=13490,6b5976c68aba5b14a0558b77c17c3932
 domain=dnspod.cn
@@ -14,24 +16,24 @@ sub_domain=pi
 ddns_conf=/tmp/ddns-dnspod.conf
 ddns_log=/tmp/ddns-dnspod.log
 
-interface_name=eth0
+interface_name=pppoe0
 
 # get ipv4 address
-expect_addr_v4=$(curl -s http://v4.ipv6-test.com/api/myip.php)
-#expect_addr_v4=$(ip -o -4 addr show $interface_name | awk '{print $4}' | cut -d / -f 1)
+#expect_addr_v4=$(curl -s http://v4.ipv6-test.com/api/myip.php)
+expect_addr_v4=$(ip -o -4 addr show $interface_name | awk '{print $4}' | cut -d / -f 1)
 
 # get ipv6 address
 #expect_addr_v6=$(curl -s http://v6.ipv6-test.com/api/myip.php)
-#expect_addr_v6=$(ip -o -6 addr show $interface_name | grep 'scope global dynamic noprefixroute' | awk '{print $4}' | cut -d / -f 1)
+#expect_addr_v6=$(ip -o -6 addr show $interface_name | grep 'scope global dynamic' | awk '{print $4}' | cut -d / -f 1)
 
 if [ -n "$expect_addr_v4" ]; then
     # get record ipv4 address
-    record_addr_v4=$(host -t A $sub_domain.$domain 119.29.29.29 | grep 'has address' | awk '{print $4}')
+    record_addr_v4=$(host -t A $sub_domain.$domain 119.29.29.29 | grep 'has IPv4 address' | awk '{print $5}')
     if [[ -z "$record_addr_v4" || "$record_addr_v4" != "$expect_addr_v4" ]]; then
         need_ddns_v4=0
     fi
-    echo "expect_addr_v4 : $expect_addr_v4" >> $ddns_log
-    echo "record_addr_v4 : $record_addr_v4" >> $ddns_log
+    #echo "expect_addr_v4 : $expect_addr_v4" >> $ddns_log
+    #echo "record_addr_v4 : $record_addr_v4" >> $ddns_log
 fi
 
 if [ -n "$expect_addr_v6" ]; then
@@ -40,15 +42,15 @@ if [ -n "$expect_addr_v6" ]; then
     if [[ -z "$record_addr_v6" || "$record_addr_v6" != "$expect_addr_v6" ]]; then
         need_ddns_v6=0
     fi
-    echo "expect_addr_v6 : $expect_addr_v6" >> $ddns_log
-    echo "record_addr_v6 : $record_addr_v6" >> $ddns_log
+    #echo "expect_addr_v6 : $expect_addr_v6" >> $ddns_log
+    #echo "record_addr_v6 : $record_addr_v6" >> $ddns_log
 fi
 
 if [[ -n "$need_ddns_v4" || -n "$need_ddns_v6" ]]; then
     if [ -f "$ddns_conf" ]; then
         source $ddns_conf
     fi
-    echo "domain_id=$domain_id, record_id_v4=$record_id_v4, record_id_v6=$record_id_v6" >> $ddns_log
+    #echo "domain_id=$domain_id, record_id_v4=$record_id_v4, record_id_v6=$record_id_v6" >> $ddns_log
 fi
 
 if [ -n "$need_ddns_v4" ]; then
@@ -76,7 +78,7 @@ if [ -n "$need_ddns_v4" ]; then
                 status_message=$(echo "$record_list" | jq -r ".status.message // empty")
                 echo "get record_id_v4 failed : $status_message" >> $ddns_log
                 # create record_id_v4
-                record_create=$(curl -s https://dnsapi.cn/Record.Create -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_type=A&value=1.1.1.1&record_line_id=0")
+                record_create=$(curl -s https://dnsapi.cn/Record.Create -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_type=A&value=119.29.29.29&record_line_id=0")
                 record_id_v4=$(echo "$record_create" | jq -r ".record.id // empty")
                 if [ -n "$record_id_v4" ]; then
                     echo "create record_id_v4 success, record_id_v4=$record_id_v4" >> $ddns_log
@@ -133,7 +135,7 @@ if [ -n "$need_ddns_v6" ]; then
                 status_message=$(echo "$record_list" | jq -r ".status.message // empty")
                 echo "get record_id_v6 failed : $status_message" >> $ddns_log
                 # create record_id_v6
-                record_create=$(curl -s https://dnsapi.cn/Record.Create -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_type=AAAA&value=1::1&record_line_id=0")
+                record_create=$(curl -s https://dnsapi.cn/Record.Create -d "format=json&login_token=$login_token&domain_id=$domain_id&sub_domain=$sub_domain&record_type=AAAA&value=2400:3200::1&record_line_id=0")
                 record_id_v6=$(echo "$record_create" | jq -r ".record.id // empty")
                 if [ -n "$record_id_v6" ]; then
                     echo "create record_id_v6 success, record_id_v6=$record_id_v6" >> $ddns_log

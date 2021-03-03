@@ -16,15 +16,16 @@ sub_domain=pi
 ddns_conf=/tmp/ddns-dnspod.conf
 ddns_log=/tmp/ddns-dnspod.log
 
-interface_name=pppoe0
+interface_name_v4=pppoe0
+interface_name_v6=switch0
 
 # get ipv4 address
 #expect_addr_v4=$(curl -s http://v4.ipv6-test.com/api/myip.php)
-expect_addr_v4=$(ip -o -4 addr show $interface_name | awk '{print $4}' | cut -d / -f 1)
+expect_addr_v4=$(ip -o -4 addr show $interface_name_v4 | awk '{print $4}' | cut -d / -f 1)
 
 # get ipv6 address
 #expect_addr_v6=$(curl -s http://v6.ipv6-test.com/api/myip.php)
-#expect_addr_v6=$(ip -o -6 addr show $interface_name | grep 'scope global dynamic' | awk '{print $4}' | cut -d / -f 1)
+#expect_addr_v6=$(ip -o -6 addr show $interface_name_v6 | grep 'scope global' | awk '{print $4}' | cut -d / -f 1)
 
 if [ -n "$expect_addr_v4" ]; then
     # get record ipv4 address

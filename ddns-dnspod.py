@@ -27,8 +27,8 @@ DDNS_LOG = os.path.split(os.path.realpath(__file__))[0] + os.sep + 'ddns-dnspod.
 def resolve():
     try:
         resolver = dns.resolver.Resolver()
-        resolver.lifetime = 6
-        resolver.nameservers = ['119.29.29.29', '223.6.6.6']
+        resolver.lifetime = 5
+        resolver.nameservers = ['119.29.29.29', '223.5.5.5']
         res = resolver.resolve(SUBDOMAIN, 'AAAA')
         for answer in res.response.answer:
             for item in answer.items:
